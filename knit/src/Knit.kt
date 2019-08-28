@@ -6,15 +6,12 @@ import java.io.*
 import java.util.*
 import kotlin.properties.*
 
-// --- props in knit.properties
+// --- global props in knit.properties
 
-val knitProperties = ClassLoader.getSystemClassLoader()
-    .getResource("knit.properties").openStream().use { Properties().apply { load(it) } }
-
-val siteRoot = knitProperties.getProperty("site.root")!!
-val moduleRoots = knitProperties.getProperty("module.roots").split(" ")
-val moduleMarker = knitProperties.getProperty("module.marker")!!
-val moduleDocs = knitProperties.getProperty("module.docs")!!
+val siteRoot = globalProperties.getValue("site.root")
+val moduleRoots = globalProperties.getValue("module.roots").split(" ")
+val moduleMarker = globalProperties.getValue("module.marker")
+val moduleDocs = globalProperties.getValue("module.docs")
 
 // --- markdown syntax
 
@@ -23,15 +20,15 @@ const val DIRECTIVE_END = "-->"
 
 const val TOC_DIRECTIVE = "TOC"
 const val TOC_REF_DIRECTIVE = "TOC_REF"
-const val KNIT_DIRECTIVE = "KNIT"
 const val INCLUDE_DIRECTIVE = "INCLUDE"
 const val CLEAR_DIRECTIVE = "CLEAR"
 const val TEST_DIRECTIVE = "TEST"
 
 const val KNIT_AUTONUMBER_PLACEHOLDER = '#'
-const val KNIT_AUTONUMBER_REGEX = "([0-9a-z]+)"
+const val KNIT_AUTONUMBER_REGEX = "[0-9a-z]+"
 
-const val TEST_OUT_DIRECTIVE = "TEST_OUT"
+const val TEST_NAME_DIRECTIVE = "TEST_NAME"
+const val TEST_NAME_PROP = "test.name"
 
 const val MODULE_DIRECTIVE = "MODULE"
 const val INDEX_DIRECTIVE = "INDEX"
@@ -75,17 +72,62 @@ fun main(args: Array<String>) {
     }
 }
 
+class KnitConfig(
+    val path: String,
+    val regex: Regex,
+    val autonumberGroup: Int,
+    val autonumberDigits: Int
+)
+
+fun KnitProps.knitConfig(): KnitConfig? {
+    val dir = this["knit.dir"] ?: return null
+    var pattern = getValue("knit.pattern")
+    val i = pattern.indexOf(KNIT_AUTONUMBER_PLACEHOLDER)
+    var autonumberGroup = 0
+    var autonumberDigits = 0
+    if (i >= 0) {
+        val j = pattern.lastIndexOf(KNIT_AUTONUMBER_PLACEHOLDER)
+        autonumberDigits = j - i + 1
+        require(pattern.substring(i, j + 1) == KNIT_AUTONUMBER_PLACEHOLDER.toString().repeat(autonumberDigits)) {
+            "knit.pattern can only use a contiguous range of '$KNIT_AUTONUMBER_PLACEHOLDER' for auto-numbering"
+        }
+        autonumberGroup = pattern.substring(0, i).count { it == '(' } + 1 // note: it does not understand escaped open braces
+        var replacementRegex = KNIT_AUTONUMBER_REGEX
+        if (pattern.getOrNull(i - 1) != '(' || pattern.getOrNull(j + 1) != ')') {
+            // needs its own group to extract number
+            autonumberGroup++
+            replacementRegex = "($replacementRegex)"
+        }
+        pattern = pattern.substring(0, i) + replacementRegex + pattern.substring(j + 1)
+    }
+    val path = "$dir$pattern"
+    return KnitConfig(path, Regex("\\(($path)\\)"), autonumberGroup, autonumberDigits)
+}
+
+class KnitIncludeEnv(
+    val file: File,
+    props: KnitProps
+) {
+    val knit = props.getMap("knit")
+}
+
+fun KnitConfig.loadMainInclude(file: File, props: KnitProps): Include {
+    val include = Include(Regex(path))
+    include.lines += props.loadTemplateLines("knit.include", KnitIncludeEnv(file, props))
+    include.lines += ""
+    return include
+}
+
 fun knit(markdownFile: File): Boolean {
     println("*** Reading $markdownFile")
+    val props = markdownFile.findProps()
+    val knit = props.knitConfig()
+    var knitAutonumberIndex = HashMap<String, Int>()
     val tocLines = arrayListOf<String>()
-    var knitRegex: Regex? = null
-    var knitAutonumberGroup = 0
-    var knitAutonumberDigits = 0
-    var knitAutonumberIndex = 1
     val includes = arrayListOf<Include>()
     val codeLines = arrayListOf<String>()
     val testLines = arrayListOf<String>()
-    var testOut: String? = null
+    var testName: String? = props[TEST_NAME_PROP]
     val testOutLines = arrayListOf<String>()
     var lastPgk: String? = null
     val files = mutableSetOf<File>()
@@ -95,6 +137,8 @@ fun knit(markdownFile: File): Boolean {
     var docsRoot: String by Delegates.notNull()
     var retryKnitLater = false
     val tocRefs = ArrayList<TocRef>().also { tocRefMap[markdownFile] = it }
+    // load main includes (if defined)
+    knit?.loadMainInclude(markdownFile, props)?.let { includes += it }
     // read markdown file
     val markdown = markdownFile.withMarkdownTextReader {
         mainLoop@ while (true) {
@@ -127,24 +171,6 @@ fun knit(markdownFile: File): Boolean {
                         if (!replaceUntilNextDirective(lines)) error("Unexpected end of file after $TOC_REF_DIRECTIVE")
                     }
                 }
-                KNIT_DIRECTIVE -> {
-                    requireSingleLine(directive)
-                    require(!directive.param.isEmpty()) { "$KNIT_DIRECTIVE directive must include regex parameter" }
-                    require(knitRegex == null) { "Only one KNIT directive is supported"}
-                    var str = directive.param
-                    val i = str.indexOf(KNIT_AUTONUMBER_PLACEHOLDER)
-                    if (i >= 0) {
-                        val j = str.lastIndexOf(KNIT_AUTONUMBER_PLACEHOLDER)
-                        knitAutonumberDigits = j - i + 1
-                        require(str.substring(i, j + 1) == KNIT_AUTONUMBER_PLACEHOLDER.toString().repeat(knitAutonumberDigits)) {
-                            "$KNIT_DIRECTIVE can only use a contiguous range of '$KNIT_AUTONUMBER_PLACEHOLDER' for auto-numbering"
-                        }
-                        knitAutonumberGroup = str.substring(0, i).count { it == '(' } + 2 // note: it does not understand escaped open braces
-                        str = str.substring(0, i) + KNIT_AUTONUMBER_REGEX + str.substring(j + 1)
-                    }
-                    knitRegex = Regex("\\((" + str + ")\\)")
-                    continue@mainLoop
-                }
                 INCLUDE_DIRECTIVE -> {
                     if (directive.param.isEmpty()) {
                         require(!directive.singleLine) { "$INCLUDE_DIRECTIVE directive without parameters must not be single line" }
@@ -167,19 +193,19 @@ fun knit(markdownFile: File): Boolean {
                     codeLines.clear()
                     continue@mainLoop
                 }
-                TEST_OUT_DIRECTIVE -> {
-                    require(!directive.param.isEmpty()) { "$TEST_OUT_DIRECTIVE directive must include file name parameter" }
-                    flushTestOut(markdownFile.parentFile, testOut, testOutLines)
-                    testOut = directive.param
-                    readUntil(DIRECTIVE_END).forEach { testOutLines += it }
+                TEST_NAME_DIRECTIVE -> {
+                    requireSingleLine(directive)
+                    require(directive.param.isNotEmpty()) { "$TEST_NAME_DIRECTIVE directive must include name parameter" }
+                    flushTestOut(markdownFile, props, testName, testOutLines)
+                    testName = directive.param
                 }
                 TEST_DIRECTIVE -> {
                     require(lastPgk != null) { "'$PACKAGE_PREFIX' prefix was not found in emitted code"}
-                    require(testOut != null) { "$TEST_OUT_DIRECTIVE directive was not specified" }
+                    require(testName != null) { "Neither $TEST_NAME_DIRECTIVE directive nor '$TEST_NAME_PROP'property was specified" }
                     val predicate = directive.param
                     if (testLines.isEmpty()) {
                         if (directive.singleLine) {
-                            require(!predicate.isEmpty()) { "$TEST_OUT_DIRECTIVE must be preceded by $TEST_START block or contain test predicate"}
+                            require(!predicate.isEmpty()) { "$TEST_DIRECTIVE must be preceded by $TEST_START block or contain test predicate"}
                         } else
                             testLines += readUntil(DIRECTIVE_END)
                     } else {
@@ -201,15 +227,15 @@ fun knit(markdownFile: File): Boolean {
                 }
             }
             if (inLine.startsWith(CODE_START)) {
-                require(testOut == null || testLines.isEmpty()) { "Previous test was not emitted with $TEST_DIRECTIVE" }
-                codeLines += ""
+                require(testName == null || testLines.isEmpty()) { "Previous test was not emitted with $TEST_DIRECTIVE" }
+                if (codeLines.lastOrNull()?.isNotBlank() == true) codeLines += ""
                 readUntilTo(CODE_END, codeLines) { line ->
                     !line.startsWith(SAMPLE_START) && !line.startsWith(SAMPLE_END)
                 }
                 continue@mainLoop
             }
             if (inLine.startsWith(TEST_START)) {
-                require(testOut == null || testLines.isEmpty()) { "Previous test was not emitted with $TEST_DIRECTIVE" }
+                require(testName == null || testLines.isEmpty()) { "Previous test was not emitted with $TEST_DIRECTIVE" }
                 readUntilTo(TEST_END, testLines)
                 continue@mainLoop
             }
@@ -234,19 +260,23 @@ fun knit(markdownFile: File): Boolean {
                     remainingApiRefNames += apiRef.name
                 }
             }
-            knitRegex?.find(inLine)?.let knitRegexMatch@{ knitMatch ->
+            knit?.regex?.find(inLine)?.let knitRegexMatch@{ knitMatch ->
                 val fileName = knitMatch.groups[1]!!.value
-                if (knitAutonumberDigits != 0) {
-                    val numGroup = knitMatch.groups[knitAutonumberGroup]!!
-                    val num = knitAutonumberIndex.toString().padStart(knitAutonumberDigits, '0')
+                if (knit.autonumberDigits != 0) {
+                    val numGroup = knitMatch.groups[knit.autonumberGroup]!!
+                    val key = knitMatch.groupValues.withIndex()
+                        .filter { it.index > 1 && it.index != knit.autonumberGroup }
+                        .joinToString("-") { it.value }
+                    val index = knitAutonumberIndex.getOrElse(key) { 1 }
+                    val num = index.toString().padStart(knit.autonumberDigits, '0')
                     if (numGroup.value != num) { // update and retry with this line if a different number
                         val r = numGroup.range
                         val newLine = inLine.substring(0, r.first) + num + inLine.substring(r.last + 1)
                         updateLineAndRetry(newLine)
                         return@knitRegexMatch
                     }
+                    knitAutonumberIndex[key] = index + 1
                 }
-                knitAutonumberIndex++
                 val file = File(markdownFile.parentFile, fileName)
                 require(files.add(file)) { "Duplicate file: $file"}
                 println("Knitting $file ...")
@@ -260,6 +290,7 @@ fun knit(markdownFile: File): Boolean {
                         outLines += line
                     }
                 }
+                if (outLines.last().isNotBlank()) outLines += ""
                 for (code in codeLines) {
                     outLines += code.replace("System.currentTimeMillis()", "currentTimeMillis()")
                 }
@@ -291,7 +322,7 @@ fun knit(markdownFile: File): Boolean {
         }
     }
     // write test output
-    flushTestOut(markdownFile.parentFile, testOut, testOutLines)
+    flushTestOut(markdownFile, props, testName, testOutLines)
     return true
 }
 
@@ -301,11 +332,11 @@ fun makeTest(testOutLines: MutableList<String>, pgk: String, test: List<String>,
     val funName = buildString {
         var cap = true
         for (c in pgk) {
-            if (c == '.') {
-                cap = true
+            cap = if (c == '.') {
+                true
             } else {
                 append(if (cap) c.toUpperCase() else c)
-                cap = false
+                false
             }
         }
     }
@@ -350,11 +381,24 @@ private fun makeReplacements(line: String, match: MatchResult): String {
     return result
 }
 
-private fun flushTestOut(parentDir: File?, testOut: String?, testOutLines: MutableList<String>) {
-    if (testOut == null) return
-    val file = File(parentDir, testOut)
-    testOutLines += "}"
-    writeLinesIfNeeded(file, testOutLines)
+class TestTemplateEnv(
+    val file: File,
+    props: KnitProps,
+    testName: String
+) {
+    val test = props.getMap("test") + mapOf("name" to testName)
+}
+
+private fun flushTestOut(file: File, props: KnitProps, testName: String?, testOutLines: MutableList<String>) {
+    if (testOutLines.isEmpty()) return
+    if (testName == null) return
+    val lines = arrayListOf<String>()
+    lines += props.loadTemplateLines("test.include", TestTemplateEnv(file, props, testName))
+    lines += testOutLines
+    lines += "}"
+    val testFile = File(props.getFile("test.dir"), "$testName.kt")
+    println("Checking $testFile")
+    writeLinesIfNeeded(testFile, lines)
     testOutLines.clear()
 }
 
@@ -586,10 +630,7 @@ fun processApiIndex(
     while (it.hasNext()) {
         val refName = it.next()
         val refLink = map[refName] ?: continue
-        if (refLink.size > 1) {
-            println("INFO: Ambiguous reference to [$refName]: $refLink, taking the shortest one")
-        }
-
+        // taking the shortest reference among candidates
         val link = refLink.minBy { it.length }
         indexList += "[$refName]: $siteRoot/$link"
         it.remove()

@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
+ * Copyright 2016-2019 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
  */
 
 apply plugin: "application"
@@ -8,6 +8,10 @@ sourceSets {
     main.kotlin.srcDirs = ['src']
     main.java.srcDirs = ['src']
     main.resources.srcDirs = ['resources']
+}
+
+dependencies {
+    compile "org.freemarker:freemarker:2.3.29"
 }
 
 FileTree mdFiles = fileTree(project.rootDir) {

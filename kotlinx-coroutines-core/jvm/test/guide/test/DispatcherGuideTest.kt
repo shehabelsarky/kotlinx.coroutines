@@ -1,9 +1,13 @@
-// This file was automatically generated from coroutines-guide.md by Knit tool. Do not edit.
+/*
+ * Copyright 2016-2019 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
+ */
+
+// This file was automatically generated from coroutine-context-and-dispatchers.md by Knit tool. Do not edit.
 package kotlinx.coroutines.guide.test
 
 import org.junit.Test
 
-class DispatchersGuideTest {
+class DispatcherGuideTest {
 
     @Test
     fun testKotlinxCoroutinesGuideContext01() {
