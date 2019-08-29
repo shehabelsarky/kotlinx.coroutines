@@ -10,56 +10,56 @@ import org.junit.Test
 class SharedStateGuideTest {
 
     @Test
-    fun testKotlinxCoroutinesGuideSync01() {
-        test("KotlinxCoroutinesGuideSync01") { kotlinx.coroutines.guide.sync01.main() }.verifyLinesStart(
+    fun testExampleSync01() {
+        test("ExampleSync01") { kotlinx.coroutines.guide.exampleSync01.main() }.verifyLinesStart(
             "Completed 100000 actions in",
             "Counter ="
         )
     }
 
     @Test
-    fun testKotlinxCoroutinesGuideSync02() {
-        test("KotlinxCoroutinesGuideSync02") { kotlinx.coroutines.guide.sync02.main() }.verifyLinesStart(
+    fun testExampleSync02() {
+        test("ExampleSync02") { kotlinx.coroutines.guide.exampleSync02.main() }.verifyLinesStart(
             "Completed 100000 actions in",
             "Counter ="
         )
     }
 
     @Test
-    fun testKotlinxCoroutinesGuideSync03() {
-        test("KotlinxCoroutinesGuideSync03") { kotlinx.coroutines.guide.sync03.main() }.verifyLinesArbitraryTime(
+    fun testExampleSync03() {
+        test("ExampleSync03") { kotlinx.coroutines.guide.exampleSync03.main() }.verifyLinesArbitraryTime(
             "Completed 100000 actions in xxx ms",
             "Counter = 100000"
         )
     }
 
     @Test
-    fun testKotlinxCoroutinesGuideSync04() {
-        test("KotlinxCoroutinesGuideSync04") { kotlinx.coroutines.guide.sync04.main() }.verifyLinesArbitraryTime(
+    fun testExampleSync04() {
+        test("ExampleSync04") { kotlinx.coroutines.guide.exampleSync04.main() }.verifyLinesArbitraryTime(
             "Completed 100000 actions in xxx ms",
             "Counter = 100000"
         )
     }
 
     @Test
-    fun testKotlinxCoroutinesGuideSync05() {
-        test("KotlinxCoroutinesGuideSync05") { kotlinx.coroutines.guide.sync05.main() }.verifyLinesArbitraryTime(
+    fun testExampleSync05() {
+        test("ExampleSync05") { kotlinx.coroutines.guide.exampleSync05.main() }.verifyLinesArbitraryTime(
             "Completed 100000 actions in xxx ms",
             "Counter = 100000"
         )
     }
 
     @Test
-    fun testKotlinxCoroutinesGuideSync06() {
-        test("KotlinxCoroutinesGuideSync06") { kotlinx.coroutines.guide.sync06.main() }.verifyLinesArbitraryTime(
+    fun testExampleSync06() {
+        test("ExampleSync06") { kotlinx.coroutines.guide.exampleSync06.main() }.verifyLinesArbitraryTime(
             "Completed 100000 actions in xxx ms",
             "Counter = 100000"
         )
     }
 
     @Test
-    fun testKotlinxCoroutinesGuideSync07() {
-        test("KotlinxCoroutinesGuideSync07") { kotlinx.coroutines.guide.sync07.main() }.verifyLinesArbitraryTime(
+    fun testExampleSync07() {
+        test("ExampleSync07") { kotlinx.coroutines.guide.exampleSync07.main() }.verifyLinesArbitraryTime(
             "Completed 100000 actions in xxx ms",
             "Counter = 100000"
         )

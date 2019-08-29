@@ -13,6 +13,17 @@ val moduleRoots = globalProperties.getValue("module.roots").split(" ")
 val moduleMarker = globalProperties.getValue("module.marker")
 val moduleDocs = globalProperties.getValue("module.docs")
 
+// --- other props
+
+const val TEST_NAME_PROP = "test.name"
+const val TEST_DIR_PROP = "test.dir"
+const val TEST_INCLUDE_PROP = "test.include"
+
+const val KNIT_PACKAGE_PROP = "knit.package"
+const val KNIT_PATTERN_PROP = "knit.pattern"
+const val KNIT_DIR_PROP = "knit.dir"
+const val KNIT_INCLUDE_PROP = "knit.include"
+
 // --- markdown syntax
 
 const val DIRECTIVE_START = "<!--- "
@@ -25,10 +36,9 @@ const val CLEAR_DIRECTIVE = "CLEAR"
 const val TEST_DIRECTIVE = "TEST"
 
 const val KNIT_AUTONUMBER_PLACEHOLDER = '#'
-const val KNIT_AUTONUMBER_REGEX = "[0-9a-z]+"
+const val KNIT_AUTONUMBER_REGEX = "([0-9a-z]+)"
 
 const val TEST_NAME_DIRECTIVE = "TEST_NAME"
-const val TEST_NAME_PROP = "test.name"
 
 const val MODULE_DIRECTIVE = "MODULE"
 const val INDEX_DIRECTIVE = "INDEX"
@@ -44,7 +54,6 @@ const val TEST_END = "```"
 
 const val SECTION_START = "##"
 
-const val PACKAGE_PREFIX = "package "
 const val STARTS_WITH_PREDICATE = "STARTS_WITH"
 const val ARBITRARY_TIME_PREDICATE = "ARBITRARY_TIME"
 const val FLEXIBLE_TIME_PREDICATE = "FLEXIBLE_TIME"
@@ -75,61 +84,62 @@ fun main(args: Array<String>) {
 class KnitConfig(
     val path: String,
     val regex: Regex,
-    val autonumberGroup: Int,
     val autonumberDigits: Int
 )
 
 fun KnitProps.knitConfig(): KnitConfig? {
-    val dir = this["knit.dir"] ?: return null
-    var pattern = getValue("knit.pattern")
+    val dir = this[KNIT_DIR_PROP] ?: return null
+    var pattern = getValue(KNIT_PATTERN_PROP)
     val i = pattern.indexOf(KNIT_AUTONUMBER_PLACEHOLDER)
-    var autonumberGroup = 0
     var autonumberDigits = 0
     if (i >= 0) {
         val j = pattern.lastIndexOf(KNIT_AUTONUMBER_PLACEHOLDER)
         autonumberDigits = j - i + 1
         require(pattern.substring(i, j + 1) == KNIT_AUTONUMBER_PLACEHOLDER.toString().repeat(autonumberDigits)) {
-            "knit.pattern can only use a contiguous range of '$KNIT_AUTONUMBER_PLACEHOLDER' for auto-numbering"
+            "$KNIT_PATTERN_PROP property can only use a contiguous range of '$KNIT_AUTONUMBER_PLACEHOLDER' for auto-numbering"
         }
-        autonumberGroup = pattern.substring(0, i).count { it == '(' } + 1 // note: it does not understand escaped open braces
-        var replacementRegex = KNIT_AUTONUMBER_REGEX
-        if (pattern.getOrNull(i - 1) != '(' || pattern.getOrNull(j + 1) != ')') {
-            // needs its own group to extract number
-            autonumberGroup++
-            replacementRegex = "($replacementRegex)"
+        require('(' !in pattern && ')' !in pattern) {
+            "$KNIT_PATTERN_PROP property cannot have match groups"
         }
-        pattern = pattern.substring(0, i) + replacementRegex + pattern.substring(j + 1)
+        pattern = pattern.substring(0, i) + KNIT_AUTONUMBER_REGEX + pattern.substring(j + 1)
     }
-    val path = "$dir$pattern"
-    return KnitConfig(path, Regex("\\(($path)\\)"), autonumberGroup, autonumberDigits)
+    val path = "$dir($pattern)"
+    return KnitConfig(path, Regex("\\(($path)\\)"), autonumberDigits)
 }
 
+@Suppress("unused") // This class is passed to freemarker template
 class KnitIncludeEnv(
     val file: File,
-    props: KnitProps
+    props: KnitProps,
+    knitName: String
 ) {
-    val knit = props.getMap("knit")
+    val knit = props.getMap("knit") + mapOf("name" to knitName)
 }
 
-fun KnitConfig.loadMainInclude(file: File, props: KnitProps): Include {
+fun KnitConfig.loadMainInclude(file: File, props: KnitProps, knitName: String): Include {
     val include = Include(Regex(path))
-    include.lines += props.loadTemplateLines("knit.include", KnitIncludeEnv(file, props))
+    include.lines += props.loadTemplateLines(KNIT_INCLUDE_PROP, KnitIncludeEnv(file, props, knitName))
     include.lines += ""
     return include
+}
+
+// Reference to knitted example's full package (pkg.name)
+class KnitRef(val pkg: String, val name: String) {
+    override fun toString(): String = "$pkg.$name"
 }
 
 fun knit(markdownFile: File): Boolean {
     println("*** Reading $markdownFile")
     val props = markdownFile.findProps()
     val knit = props.knitConfig()
-    var knitAutonumberIndex = HashMap<String, Int>()
+    val knitAutonumberIndex = HashMap<String, Int>()
     val tocLines = arrayListOf<String>()
     val includes = arrayListOf<Include>()
     val codeLines = arrayListOf<String>()
     val testLines = arrayListOf<String>()
     var testName: String? = props[TEST_NAME_PROP]
     val testOutLines = arrayListOf<String>()
-    var lastPgk: String? = null
+    var lastKnit: KnitRef? = null
     val files = mutableSetOf<File>()
     val allApiRefs = arrayListOf<ApiRef>()
     val remainingApiRefNames = mutableSetOf<String>()
@@ -137,8 +147,6 @@ fun knit(markdownFile: File): Boolean {
     var docsRoot: String by Delegates.notNull()
     var retryKnitLater = false
     val tocRefs = ArrayList<TocRef>().also { tocRefMap[markdownFile] = it }
-    // load main includes (if defined)
-    knit?.loadMainInclude(markdownFile, props)?.let { includes += it }
     // read markdown file
     val markdown = markdownFile.withMarkdownTextReader {
         mainLoop@ while (true) {
@@ -200,18 +208,18 @@ fun knit(markdownFile: File): Boolean {
                     testName = directive.param
                 }
                 TEST_DIRECTIVE -> {
-                    require(lastPgk != null) { "'$PACKAGE_PREFIX' prefix was not found in emitted code"}
+                    require(lastKnit != null) { "$TEST_DIRECTIVE must be preceded by knitted file" }
                     require(testName != null) { "Neither $TEST_NAME_DIRECTIVE directive nor '$TEST_NAME_PROP'property was specified" }
                     val predicate = directive.param
                     if (testLines.isEmpty()) {
                         if (directive.singleLine) {
-                            require(!predicate.isEmpty()) { "$TEST_DIRECTIVE must be preceded by $TEST_START block or contain test predicate"}
+                            require(predicate.isNotEmpty()) { "$TEST_DIRECTIVE must be preceded by $TEST_START block or contain test predicate"}
                         } else
                             testLines += readUntil(DIRECTIVE_END)
                     } else {
                         requireSingleLine(directive)
                     }
-                    makeTest(testOutLines, lastPgk!!, testLines, predicate)
+                    makeTest(testOutLines, lastKnit!!, testLines, predicate)
                     testLines.clear()
                 }
                 MODULE_DIRECTIVE -> {
@@ -261,12 +269,13 @@ fun knit(markdownFile: File): Boolean {
                 }
             }
             knit?.regex?.find(inLine)?.let knitRegexMatch@{ knitMatch ->
-                val fileName = knitMatch.groups[1]!!.value
+                val path = knitMatch.groups[1]!!.value // full matched knit path dir dir & file name
+                val fileGroup = knitMatch.groups[2]!!
+                val fileName = fileGroup.value // knitted file name like "example-basic-01.kt"
                 if (knit.autonumberDigits != 0) {
-                    val numGroup = knitMatch.groups[knit.autonumberGroup]!!
-                    val key = knitMatch.groupValues.withIndex()
-                        .filter { it.index > 1 && it.index != knit.autonumberGroup }
-                        .joinToString("-") { it.value }
+                    val numGroup = knitMatch.groups[3]!! // file number part like "01"
+                    val key = inLine.substring(fileGroup.range.first, numGroup.range.first) +
+                            inLine.substring(numGroup.range.last + 1, fileGroup.range.last + 1)
                     val index = knitAutonumberIndex.getOrElse(key) { 1 }
                     val num = index.toString().padStart(knit.autonumberDigits, '0')
                     if (numGroup.value != num) { // update and retry with this line if a different number
@@ -277,25 +286,23 @@ fun knit(markdownFile: File): Boolean {
                     }
                     knitAutonumberIndex[key] = index + 1
                 }
-                val file = File(markdownFile.parentFile, fileName)
+                val file = File(markdownFile.parentFile, path)
                 require(files.add(file)) { "Duplicate file: $file"}
                 println("Knitting $file ...")
                 val outLines = arrayListOf<String>()
-                for (include in includes) {
-                    val includeMatch = include.regex.matchEntire(fileName) ?: continue
-                    include.lines.forEach { includeLine ->
-                        val line = makeReplacements(includeLine, includeMatch)
-                        if (line.startsWith(PACKAGE_PREFIX))
-                            lastPgk = line.substring(PACKAGE_PREFIX.length).trim()
-                        outLines += line
-                    }
-                }
+                val fileIncludes = arrayListOf<Include>()
+                // load & process template of the main include
+                val knitName = fileName.toKnitName()
+                fileIncludes += knit.loadMainInclude(markdownFile, props, knitName)
+                fileIncludes += includes.filter { it.regex.matches(path) }
+                for (include in fileIncludes) outLines += include.lines
                 if (outLines.last().isNotBlank()) outLines += ""
                 for (code in codeLines) {
                     outLines += code.replace("System.currentTimeMillis()", "currentTimeMillis()")
                 }
                 codeLines.clear()
                 writeLinesIfNeeded(file, outLines)
+                lastKnit = KnitRef(props.getValue(KNIT_PACKAGE_PROP), knitName)
             }
         }
     } ?: return false // false when failed
@@ -326,24 +333,27 @@ fun knit(markdownFile: File): Boolean {
     return true
 }
 
-data class TocRef(val levelPrefix: String, val name: String, val ref: String)
+// Converts file name like "example-basic-01.kt" to unique knit.name for package like "exampleBasic01"
+private fun String.toKnitName(): String = substringBefore('.').capitalizeAfter('-')
 
-fun makeTest(testOutLines: MutableList<String>, pgk: String, test: List<String>, predicate: String) {
-    val funName = buildString {
-        var cap = true
-        for (c in pgk) {
-            cap = if (c == '.') {
-                true
-            } else {
-                append(if (cap) c.toUpperCase() else c)
-                false
-            }
+private fun String.capitalizeAfter(char: Char): String = buildString {
+    var cap = false
+    for (c in this@capitalizeAfter) {
+        cap = if (c == char) true else {
+            append(if (cap) c.toUpperCase() else c)
+            false
         }
     }
+}
+
+data class TocRef(val levelPrefix: String, val name: String, val ref: String)
+
+fun makeTest(testOutLines: MutableList<String>, knit: KnitRef, test: List<String>, predicate: String) {
+    val funName = knit.name.capitalize()
     testOutLines += ""
     testOutLines += "    @Test"
     testOutLines += "    fun test$funName() {"
-    val prefix = "        test(\"$funName\") { $pgk.main() }"
+    val prefix = "        test(\"$funName\") { $knit.main() }"
     when (predicate) {
         "" -> makeTestLines(testOutLines, prefix, "verifyLines", test)
         STARTS_WITH_PREDICATE -> makeTestLines(testOutLines, prefix, "verifyLinesStartWith", test)
@@ -372,15 +382,7 @@ private fun makeTestLines(testOutLines: MutableList<String>, prefix: String, met
     testOutLines += "        )"
 }
 
-private fun makeReplacements(line: String, match: MatchResult): String {
-    var result = line
-    for ((id, group) in match.groups.withIndex()) {
-        if (group != null)
-            result = result.replace("\$\$$id", group.value)
-    }
-    return result
-}
-
+@Suppress("unused") // This class is passed to freemarker template
 class TestTemplateEnv(
     val file: File,
     props: KnitProps,
@@ -393,10 +395,10 @@ private fun flushTestOut(file: File, props: KnitProps, testName: String?, testOu
     if (testOutLines.isEmpty()) return
     if (testName == null) return
     val lines = arrayListOf<String>()
-    lines += props.loadTemplateLines("test.include", TestTemplateEnv(file, props, testName))
+    lines += props.loadTemplateLines(TEST_INCLUDE_PROP, TestTemplateEnv(file, props, testName))
     lines += testOutLines
     lines += "}"
-    val testFile = File(props.getFile("test.dir"), "$testName.kt")
+    val testFile = File(props.getFile(TEST_DIR_PROP), "$testName.kt")
     println("Checking $testFile")
     writeLinesIfNeeded(testFile, lines)
     testOutLines.clear()

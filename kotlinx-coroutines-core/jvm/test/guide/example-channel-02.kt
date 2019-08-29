@@ -3,7 +3,7 @@
  */
 
 // This file was automatically generated from channels.md by Knit tool. Do not edit.
-package kotlinx.coroutines.guide.channel02
+package kotlinx.coroutines.guide.exampleChannel02
 
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*

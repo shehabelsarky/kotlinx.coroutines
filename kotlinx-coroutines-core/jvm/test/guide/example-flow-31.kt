@@ -3,7 +3,7 @@
  */
 
 // This file was automatically generated from flow.md by Knit tool. Do not edit.
-package kotlinx.coroutines.guide.flow31
+package kotlinx.coroutines.guide.exampleFlow31
 
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*

@@ -3,7 +3,7 @@
  */
 
 // This file was automatically generated from select-expression.md by Knit tool. Do not edit.
-package kotlinx.coroutines.guide.select02
+package kotlinx.coroutines.guide.exampleSelect02
 
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*

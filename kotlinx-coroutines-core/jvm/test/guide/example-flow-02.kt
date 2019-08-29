@@ -3,7 +3,7 @@
  */
 
 // This file was automatically generated from flow.md by Knit tool. Do not edit.
-package kotlinx.coroutines.guide.flow02
+package kotlinx.coroutines.guide.exampleFlow02
 
 fun foo(): Sequence<Int> = sequence { // sequence builder
     for (i in 1..3) {

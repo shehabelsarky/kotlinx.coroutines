@@ -3,7 +3,7 @@
  */
 
 // This file was automatically generated from shared-mutable-state-and-concurrency.md by Knit tool. Do not edit.
-package kotlinx.coroutines.guide.sync04
+package kotlinx.coroutines.guide.exampleSync04
 
 import kotlinx.coroutines.*
 import kotlin.system.*

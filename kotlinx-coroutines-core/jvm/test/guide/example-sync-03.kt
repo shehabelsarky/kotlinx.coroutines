@@ -3,7 +3,7 @@
  */
 
 // This file was automatically generated from shared-mutable-state-and-concurrency.md by Knit tool. Do not edit.
-package kotlinx.coroutines.guide.sync03
+package kotlinx.coroutines.guide.exampleSync03
 
 import kotlinx.coroutines.*
 import java.util.concurrent.atomic.*

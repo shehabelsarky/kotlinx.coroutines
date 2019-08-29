@@ -3,7 +3,7 @@
  */
 
 // This file was automatically generated from composing-suspending-functions.md by Knit tool. Do not edit.
-package kotlinx.coroutines.guide.compose05
+package kotlinx.coroutines.guide.exampleCompose05
 
 import kotlinx.coroutines.*
 import kotlin.system.*

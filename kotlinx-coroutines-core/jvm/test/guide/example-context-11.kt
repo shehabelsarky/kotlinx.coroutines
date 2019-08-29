@@ -3,7 +3,7 @@
  */
 
 // This file was automatically generated from coroutine-context-and-dispatchers.md by Knit tool. Do not edit.
-package kotlinx.coroutines.guide.context11
+package kotlinx.coroutines.guide.exampleContext11
 
 import kotlinx.coroutines.*
 

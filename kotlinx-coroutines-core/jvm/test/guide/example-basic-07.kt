@@ -3,7 +3,7 @@
  */
 
 // This file was automatically generated from basics.md by Knit tool. Do not edit.
-package kotlinx.coroutines.guide.basic07
+package kotlinx.coroutines.guide.exampleBasic07
 
 import kotlinx.coroutines.*
 

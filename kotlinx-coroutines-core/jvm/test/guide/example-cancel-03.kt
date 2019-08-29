@@ -3,7 +3,7 @@
  */
 
 // This file was automatically generated from cancellation-and-timeouts.md by Knit tool. Do not edit.
-package kotlinx.coroutines.guide.cancel03
+package kotlinx.coroutines.guide.exampleCancel03
 
 import kotlinx.coroutines.*
 

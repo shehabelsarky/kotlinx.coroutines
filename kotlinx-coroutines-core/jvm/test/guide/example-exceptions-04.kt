@@ -3,7 +3,7 @@
  */
 
 // This file was automatically generated from exception-handling.md by Knit tool. Do not edit.
-package kotlinx.coroutines.guide.exceptions04
+package kotlinx.coroutines.guide.exampleExceptions04
 
 import kotlinx.coroutines.*
 
