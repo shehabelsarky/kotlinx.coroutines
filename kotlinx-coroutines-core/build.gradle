@@ -113,3 +113,9 @@ task testsJar(type: Jar, dependsOn: jvmTestClasses) {
 artifacts {
     archives testsJar
 }
+
+
+atomicfu {
+    // turn atomicFU transformer off
+    transformJs = false // set to false to turn off JS transformation
+}

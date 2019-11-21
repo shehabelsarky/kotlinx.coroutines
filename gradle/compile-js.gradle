@@ -13,6 +13,7 @@ dependencies {
 
 tasks.withType(compileKotlin2Js.getClass()) {
     kotlinOptions {
+        freeCompilerArgs += ["-Xir-produce-klib-dir"]
         moduleKind = "umd"
         sourceMap = true
         metaInfo = true
@@ -24,5 +25,11 @@ compileKotlin2Js {
         // drop -js suffix from outputFile
         def baseName = project.name - "-js"
         outputFile = new File(outputFile.parent, baseName + ".js")
+    }
+}
+
+compileTestKotlin2Js {
+    kotlinOptions {
+        freeCompilerArgs += ["-Xir-produce-js"]
     }
 }

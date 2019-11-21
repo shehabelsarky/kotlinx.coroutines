@@ -11,6 +11,7 @@ dependencies {
 
 compileKotlin2Js {
     kotlinOptions {
+        freeCompilerArgs += ["-Xir-produce-js"]
         main = "call"
     }
 }

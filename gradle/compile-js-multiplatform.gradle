@@ -30,12 +30,14 @@ compileKotlinJs {
 
     kotlinOptions {
         // drop -js suffix from outputFile
+        freeCompilerArgs += ["-Xir-produce-klib-dir"]
         def baseName = project.name - "-js"
         outputFile = new File(outputFile.parent, baseName + ".js")
     }
 }
 
 compileTestKotlinJs {
+    kotlinOptions.freeCompilerArgs += ["-Xir-produce-js"]
     kotlinOptions.metaInfo = true
     kotlinOptions.sourceMap = true
     kotlinOptions.moduleKind = 'umd'
