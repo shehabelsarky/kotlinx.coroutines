@@ -142,7 +142,7 @@ internal abstract class AbstractSendChannel<E> : SendChannel<E> {
 
     public final override val isClosedForSend: Boolean get() = closedForSend != null
     public override val isFull: Boolean get() = isFullImpl
-    protected val isFullImpl: Boolean get() = queue.nextNode !is ReceiveOrClosed<*> && isBufferFull
+    protected open val isFullImpl: Boolean get() = queue.nextNode !is ReceiveOrClosed<*> && isBufferFull
 
     public final override suspend fun send(element: E) {
         // fast path -- try offer non-blocking
