@@ -91,7 +91,7 @@ internal open class CancellableContinuationImpl<in T>(
      * Resets cancellability state in order to [suspendAtomicCancellableCoroutineReusable] to work.
      * Invariant: used only by [suspendAtomicCancellableCoroutineReusable] in [REUSABLE_CLAIMED] state.
      */
-    internal fun resetState(): Boolean {
+    internal fun resetState(resumeMode: Int): Boolean {
         assert { parentHandle !== NonDisposableHandle }
         val state = _state.value
         assert { state !is NotCompleted }
@@ -101,6 +101,7 @@ internal open class CancellableContinuationImpl<in T>(
         }
         _decision.value = UNDECIDED
         _state.value = Active
+        this.resumeMode = resumeMode
         return true
     }
 
@@ -128,7 +129,7 @@ internal open class CancellableContinuationImpl<in T>(
 
     private fun checkCompleted(): Boolean {
         val completed = isCompleted
-        if (resumeMode != MODE_ATOMIC_DEFAULT) return completed // Do not check postponed cancellation for non-reusable continuations
+        if (!resumeMode.isReusableMode) return completed // Do not check postponed cancellation for non-reusable continuations
         val dispatched = delegate as? DispatchedContinuation<*> ?: return completed
         val cause = dispatched.checkPostponedCancellation(this) ?: return completed
         if (!completed) {
@@ -157,7 +158,7 @@ internal open class CancellableContinuationImpl<in T>(
      * Attempt to postpone cancellation for reusable cancellable continuation
      */
     private fun cancelLater(cause: Throwable): Boolean {
-        if (resumeMode != MODE_ATOMIC_DEFAULT) return false
+        if (!resumeMode.isReusableMode) return false
         val dispatched = (delegate as? DispatchedContinuation<*>) ?: return false
         return dispatched.postponeCancellation(cause)
     }
