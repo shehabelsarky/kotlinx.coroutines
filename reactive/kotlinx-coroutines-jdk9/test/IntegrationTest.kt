@@ -5,6 +5,7 @@
 package kotlinx.coroutines.jdk9
 
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.flowOn
 import org.hamcrest.MatcherAssert.*
 import org.hamcrest.core.*
 import org.junit.*
@@ -90,9 +91,8 @@ class IntegrationTest(
         assertThat(pub.awaitFirstOrElse { 0 }, IsEqual(1))
         assertIAE { pub.awaitSingle() }
         checkNumbers(n, pub)
-        val channel = pub.openSubscription()
-        checkNumbers(n, channel.asPublisher(ctx(coroutineContext)))
-        channel.cancel()
+        val flow = pub.asFlow()
+        checkNumbers(n, flow.flowOn(ctx(coroutineContext)).asPublisher())
     }
 
     @Test
