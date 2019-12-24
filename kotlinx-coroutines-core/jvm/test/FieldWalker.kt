@@ -10,6 +10,7 @@ import java.util.Collections.*
 import kotlin.collections.ArrayList
 
 object FieldWalker {
+    private val fieldsCache = HashMap<Class<*>, List<Field>>()
 
     /*
      * Reflectively starts to walk through object graph and returns identity set of all reachable objects.
@@ -32,9 +33,7 @@ object FieldWalker {
         result: MutableSet<Any>,
         stack: ArrayDeque<Any>
     ) {
-        val fields = fields()
-        fields.forEach {
-            it.isAccessible = true
+        fields().forEach {
             val value = it.get(element) ?: return@forEach
             if (result.add(value)) {
                 stack.addLast(value)
@@ -52,18 +51,21 @@ object FieldWalker {
     }
 
     private fun Class<*>.fields(): List<Field> {
+        fieldsCache[this]?.let { return it }
         val result = ArrayList<Field>()
         var type = this
         while (type != Any::class.java) {
             val fields = type.declaredFields.filter {
-                !it.type.isPrimitive
+                val ok = !it.type.isPrimitive
                         && !Modifier.isStatic(it.modifiers)
                         && !(it.type.isArray && it.type.componentType.isPrimitive)
+                if (ok) kotlin.runCatching { it.isAccessible = true } // try make accessible ignoring errors
+                ok && it.isAccessible
             }
             result.addAll(fields)
             type = type.superclass
         }
-
+        fieldsCache[this] = result
         return result
     }
 
