@@ -354,7 +354,7 @@ class FlowGuideTest {
     fun testKotlinxCoroutinesGuideFlow34() {
         test("KotlinxCoroutinesGuideFlow34") { kotlinx.coroutines.guide.flow34.main() }.verifyExceptions(
             "1",
-            "Flow completed with null",
+            "Flow completed with java.lang.IllegalStateException: Collected 2",
             "Exception in thread \"main\" java.lang.IllegalStateException: Collected 2"
         )
     }
