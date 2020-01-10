@@ -34,7 +34,10 @@ task preparePublishNpm(type: Copy) {
     into npmDeployDir
 }
 
-task publishNpm(type: NpmTask, dependsOn: [preparePublishNpm]) {
+task publishNpm {
+}
+
+/*task publishNpm(type: NpmTask, dependsOn: [preparePublishNpm]) {
     workingDir = npmDeployDir
   
     doFirst {
@@ -49,4 +52,4 @@ task publishNpm(type: NpmTask, dependsOn: [preparePublishNpm]) {
             args = deployArgs
         }
     }
-}
+}*/
