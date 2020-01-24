@@ -11,6 +11,8 @@ public fun String.trimStackTrace(): String =
     trimIndent()
         .replace(Regex(":[0-9]+"), "")
         .replace(Regex("#[0-9]+"), "")
+        .replace(Regex("(?<=\tat )[^\n]*/"), "")
+        .replace(Regex("\t"), "")
         .applyBackspace()
 
 public fun String.applyBackspace(): String {
