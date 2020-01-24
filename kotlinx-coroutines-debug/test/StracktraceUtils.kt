@@ -32,16 +32,12 @@ public fun String.applyBackspace(): String {
 
 public fun verifyStackTrace(e: Throwable, traces: List<String>) {
     val stacktrace = toStackTrace(e)
+    val trimmedStackTrace = stacktrace.trimStackTrace()
     traces.forEach {
-        val expectedLines = it.trimStackTrace().split("\n")
-        for (i in 0 until expectedLines.size) {
-            traces.forEach {
-                assertTrue(
-                    stacktrace.trimStackTrace().contains(it.trimStackTrace()),
-                    "\nExpected trace element:\n$it\n\nActual stacktrace:\n$stacktrace"
-                )
-            }
-        }
+        assertTrue(
+            trimmedStackTrace.contains(it.trimStackTrace()),
+            "\nExpected trace element:\n$it\n\nActual stacktrace:\n$stacktrace"
+        )
     }
 
     val causes = stacktrace.count("Caused by")
