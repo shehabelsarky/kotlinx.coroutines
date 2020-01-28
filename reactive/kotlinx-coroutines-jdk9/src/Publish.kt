@@ -2,34 +2,17 @@
  * Copyright 2016-2020 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
  */
 
-@file:Suppress("INVISIBLE_REFERENCE", "INVISIBLE_MEMBER")
-
 package kotlinx.coroutines.jdk9
 
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
 import java.util.concurrent.Flow.*
 import kotlin.coroutines.*
-import kotlinx.coroutines.reactive.publish
 import org.reactivestreams.FlowAdapters
 
 /**
- * Creates cold reactive [Publisher] that runs a given [block] in a coroutine.
- * Every time the returned flux is subscribed, it starts a new coroutine in the specified [context].
- * Coroutine emits ([Subscriber.onNext]) values with `send`, completes ([Subscriber.onComplete])
- * when the coroutine completes or channel is explicitly closed and emits error ([Subscriber.onError])
- * if coroutine throws an exception or closes channel with a cause.
- * Unsubscribing cancels running coroutine.
- *
- * Invocations of `send` are suspended appropriately when subscribers apply back-pressure and to ensure that
- * `onNext` is not invoked concurrently.
- *
- * Coroutine context can be specified with [context] argument.
- * If the context does not have any dispatcher nor any other [ContinuationInterceptor], then [Dispatchers.Default] is used.
- * Method throws [IllegalArgumentException] if provided [context] contains a [Job] instance.
- *
- * **Note: This is an experimental api.** Behaviour of publishers that work as children in a parent scope with respect
- *        to cancellation and error handling may change in the future.
+ * A thin wrapper around [kotlinx.coroutines.reactive.publish] that converts the resulting publisher into
+ * a JDK 9 Flow [Publisher].
  */
 @ExperimentalCoroutinesApi
 public fun <T> publish(

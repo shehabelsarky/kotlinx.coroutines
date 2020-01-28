@@ -4,81 +4,41 @@
 
 package kotlinx.coroutines.jdk9
 
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Job
 import java.util.concurrent.Flow.Publisher
-import java.util.*
 import org.reactivestreams.FlowAdapters
 import kotlinx.coroutines.reactive.*
 
 /**
- * Awaits for the first value from the given publisher without blocking a thread and
- * returns the resulting value or throws the corresponding exception if this publisher had produced error.
- *
- * This suspending function is cancellable.
- * If the [Job] of the current coroutine is cancelled or completed while this suspending function is waiting, this function
- * immediately resumes with [CancellationException].
- *
- * @throws NoSuchElementException if publisher does not emit any value
+ * A thin wrapper around [kotlinx.coroutines.reactive.awaitFirst] for JDK 9 Flow [Publisher].
  */
 public suspend fun <T> Publisher<T>.awaitFirst(): T = FlowAdapters.toPublisher(this).awaitFirst()
 
 /**
- * Awaits for the first value from the given observable or the [default] value if none is emitted without blocking a
- * thread and returns the resulting value or throws the corresponding exception if this observable had produced error.
- *
- * This suspending function is cancellable.
- * If the [Job] of the current coroutine is cancelled or completed while this suspending function is waiting, this function
- * immediately resumes with [CancellationException].
+ * A thin wrapper around [kotlinx.coroutines.reactive.awaitFirstOrDefault] for JDK 9 Flow [Publisher].
  */
 public suspend fun <T> Publisher<T>.awaitFirstOrDefault(default: T): T =
         FlowAdapters.toPublisher(this).awaitFirstOrDefault(default)
 
 /**
- * Awaits for the first value from the given observable or `null` value if none is emitted without blocking a
- * thread and returns the resulting value or throws the corresponding exception if this observable had produced error.
- *
- * This suspending function is cancellable.
- * If the [Job] of the current coroutine is cancelled or completed while this suspending function is waiting, this function
- * immediately resumes with [CancellationException].
+ * A thin wrapper around [kotlinx.coroutines.reactive.awaitFirstOrNull] for JDK 9 Flow [Publisher].
  */
 public suspend fun <T> Publisher<T>.awaitFirstOrNull(): T? =
         FlowAdapters.toPublisher(this).awaitFirstOrNull()
 
 /**
- * Awaits for the first value from the given observable or call [defaultValue] to get a value if none is emitted without blocking a
- * thread and returns the resulting value or throws the corresponding exception if this observable had produced error.
- *
- * This suspending function is cancellable.
- * If the [Job] of the current coroutine is cancelled or completed while this suspending function is waiting, this function
- * immediately resumes with [CancellationException].
+ * A thin wrapper around [kotlinx.coroutines.reactive.awaitFirstOrElse] for JDK 9 Flow [Publisher].
  */
 public suspend fun <T> Publisher<T>.awaitFirstOrElse(defaultValue: () -> T): T =
         FlowAdapters.toPublisher(this).awaitFirstOrElse(defaultValue)
 
 /**
- * Awaits for the last value from the given publisher without blocking a thread and
- * returns the resulting value or throws the corresponding exception if this publisher had produced error.
- *
- * This suspending function is cancellable.
- * If the [Job] of the current coroutine is cancelled or completed while this suspending function is waiting, this function
- * immediately resumes with [CancellationException].
- *
- * @throws NoSuchElementException if publisher does not emit any value
+ * A thin wrapper around [kotlinx.coroutines.reactive.awaitLast] for JDK 9 Flow [Publisher].
  */
 public suspend fun <T> Publisher<T>.awaitLast(): T =
         FlowAdapters.toPublisher(this).awaitLast()
 
 /**
- * Awaits for the single value from the given publisher without blocking a thread and
- * returns the resulting value or throws the corresponding exception if this publisher had produced error.
- *
- * This suspending function is cancellable.
- * If the [Job] of the current coroutine is cancelled or completed while this suspending function is waiting, this function
- * immediately resumes with [CancellationException].
- *
- * @throws NoSuchElementException if publisher does not emit any value
- * @throws IllegalArgumentException if publisher emits more than one value
+ * A thin wrapper around [kotlinx.coroutines.reactive.awaitSingle] for JDK 9 Flow [Publisher].
  */
 public suspend fun <T> Publisher<T>.awaitSingle(): T =
         FlowAdapters.toPublisher(this).awaitSingle()

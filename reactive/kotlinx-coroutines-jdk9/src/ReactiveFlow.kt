@@ -12,25 +12,14 @@ import java.util.concurrent.Flow.*
 import org.reactivestreams.FlowAdapters
 
 /**
- * Transforms the given reactive [Publisher] into [Flow].
- * Use [buffer] operator on the resulting flow to specify the size of the backpressure.
- * More precisely, it specifies the value of the subscription's [request][Subscription.request].
- * `1` is used by default.
- *
- * If any of the resulting
-  flow transformations fails, subscription is immediately cancelled and all in-flights elements
- * are discarded.*
- * This function is integrated with `ReactorContext` from `kotlinx-coroutines-reactor` module,
- * see its documentation for additional details.
+ * A thin wrapper around [kotlinx.coroutines.reactive.asFlow] for JDK 9 Flow [Publisher].
  */
 public fun <T : Any> Publisher<T>.asFlow(): Flow<T> =
         FlowAdapters.toPublisher(this).asFlow()
 
 /**
- * Transforms the given flow to a reactive specification compliant [Publisher].
- *
- * This function is integrated with `ReactorContext` from `kotlinx-coroutines-reactor` module,
- * see its documentation for additional details.
+ * A thin wrapper around [kotlinx.coroutines.reactive.asPublisher] that converts the result into
+ * a JDK 9 Flow [Publisher].
  */
 public fun <T : Any> Flow<T>.asPublisher(): Publisher<T> {
     val reactivePublisher : org.reactivestreams.Publisher<T> = this.asPublisher<T>()
@@ -38,8 +27,7 @@ public fun <T : Any> Flow<T>.asPublisher(): Publisher<T> {
 }
 
 /**
- * Subscribes to this [Publisher] and performs the specified action for each received element.
- * Cancels subscription if any exception happens during collect.
+ * A thin wrapper around [kotlinx.coroutines.reactive.collect] for JDK 9 Flow [Publisher].
  */
 public suspend fun <T> Publisher<T>.collect(action: (T) -> Unit) =
     FlowAdapters.toPublisher(this).collect(action)
