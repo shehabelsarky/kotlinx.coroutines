@@ -3,6 +3,7 @@ package kotlinx.coroutines.channels
 import kotlinx.coroutines.*
 import kotlinx.coroutines.internal.*
 import kotlinx.coroutines.selects.*
+import kotlin.native.concurrent.SharedImmutable
 
 /**
  * Channel that buffers at most one element and conflates all subsequent `send` and `offer` invocations,
@@ -15,17 +16,18 @@ import kotlinx.coroutines.selects.*
  */
 internal open class ConflatedChannel<E> : AbstractChannel<E>() {
     protected final override val isBufferAlwaysEmpty: Boolean = false
-    protected final override val isBufferEmpty: Boolean get() = lock.withLock { size == 0 }
+    protected final override val isBufferEmpty: Boolean get() = lock.withLock { value === EMPTY }
     protected final override val isBufferAlwaysFull: Boolean = false
-    protected final override val isBufferFull: Boolean get() = lock.withLock { size == 1 }
+    protected final override val isBufferFull: Boolean get() = false
 
-    protected final override val isFullImpl: Boolean = false
+    private val lock = ReentrantLock()
 
-    val lock = ReentrantLock()
+    private var value: Any? = EMPTY
 
-    var buffer: E? = null
-
-    var size = 0
+    private companion object {
+        @SharedImmutable
+        private val EMPTY = Symbol("EMPTY")
+    }
 
     // result is `OFFER_SUCCESS | Closed`
     protected override fun offerInternal(element: E): Any {
@@ -33,7 +35,7 @@ internal open class ConflatedChannel<E> : AbstractChannel<E>() {
         lock.withLock {
             closedForSend?.let { return it }
             // if there is no element written in buffer
-            if (size == 0) {
+            if (value === EMPTY) {
                 // check for receivers that were waiting on the empty buffer
                 loop@ while(true) {
                     receive = takeFirstReceiveOrPeekClosed() ?: break@loop // break when no receivers queued
@@ -47,8 +49,7 @@ internal open class ConflatedChannel<E> : AbstractChannel<E>() {
                     }
                 }
             }
-            size = 1
-            buffer = element
+            value = element
             return OFFER_SUCCESS
         }
         // breaks here if offer meets receiver
@@ -61,8 +62,8 @@ internal open class ConflatedChannel<E> : AbstractChannel<E>() {
         var receive: ReceiveOrClosed<E>? = null
         lock.withLock {
             closedForSend?.let { return it }
-            if (size == 0) {
-                loop@ while (true) {
+            if (value === EMPTY) {
+                loop@ while(true) {
                     val offerOp = describeTryOffer(element)
                     val failure = select.performAtomicTrySelect(offerOp)
                     when {
@@ -81,8 +82,7 @@ internal open class ConflatedChannel<E> : AbstractChannel<E>() {
             if (!select.trySelect()) {
                 return ALREADY_SELECTED
             }
-            size = 1
-            buffer = element
+            value = element
             return OFFER_SUCCESS
         }
         // breaks here if offer meets receiver
@@ -94,10 +94,9 @@ internal open class ConflatedChannel<E> : AbstractChannel<E>() {
     protected override fun pollInternal(): Any? {
         var result: Any? = null
         lock.withLock {
-            if (size == 0) return closedForSend ?: POLL_FAILED
-            result = buffer
-            buffer = null
-            size = 0
+            if (value === EMPTY) return closedForSend ?: POLL_FAILED
+            result = value
+            value = EMPTY
         }
         return result
     }
@@ -106,12 +105,11 @@ internal open class ConflatedChannel<E> : AbstractChannel<E>() {
     protected override fun pollSelectInternal(select: SelectInstance<*>): Any? {
         var result: Any? = null
         lock.withLock {
-            if (size == 0) return closedForSend ?: POLL_FAILED
+            if (value === EMPTY) return closedForSend ?: POLL_FAILED
             if (!select.trySelect())
                 return ALREADY_SELECTED
-            result = buffer
-            buffer = null
-            size = 0
+            result = value
+            value = EMPTY
         }
         return result
     }
@@ -119,9 +117,14 @@ internal open class ConflatedChannel<E> : AbstractChannel<E>() {
     protected override fun onCancelIdempotent(wasClosed: Boolean) {
         if (wasClosed) {
             lock.withLock {
-                buffer = null
-                size = 0
+                value = EMPTY
             }
         }
+        super.onCancelIdempotent(wasClosed)
     }
+
+    // ------ debug ------
+
+    override val bufferDebugString: String
+        get() = "(value=$value)"
 }
