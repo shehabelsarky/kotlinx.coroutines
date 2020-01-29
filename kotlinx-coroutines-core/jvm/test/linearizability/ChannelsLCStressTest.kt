@@ -100,7 +100,7 @@ abstract class ChannelLCStressTestBase(private val c: Channel<Int>, private val 
     fun close(@Param(name = "closeToken") token: Int): Boolean = c.close(NumberedCancellationException(token))
 
     // TODO: this operation should be (and can be!) linearizable, but is not
-    //@Operation
+    // @Operation
     fun cancel(@Param(name = "closeToken") token: Int) = c.cancel(NumberedCancellationException(token))
 
     @Operation

@@ -15,9 +15,9 @@ import kotlin.native.concurrent.SharedImmutable
  * This channel is created by `Channel(Channel.CONFLATED)` factory function invocation.
  */
 internal open class ConflatedChannel<E> : AbstractChannel<E>() {
-    protected final override val isBufferAlwaysEmpty: Boolean = false
+    protected final override val isBufferAlwaysEmpty: Boolean get() = false
     protected final override val isBufferEmpty: Boolean get() = lock.withLock { value === EMPTY }
-    protected final override val isBufferAlwaysFull: Boolean = false
+    protected final override val isBufferAlwaysFull: Boolean get() = false
     protected final override val isBufferFull: Boolean get() = false
 
     private val lock = ReentrantLock()
