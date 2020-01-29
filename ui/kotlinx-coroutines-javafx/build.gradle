@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
+ * Copyright 2016-2020 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
  */
 
 plugins {
@@ -11,3 +11,30 @@ javafx {
     modules = [ 'javafx.controls' ]
     configuration = 'compile'
 }
+
+task checkJdk8() {
+    // only fail w/o JDK_18 when actually trying to compile, not during project setup phase
+    doLast {
+        if (!System.env.JDK_18) {
+            throw new GradleException("JDK_18 environment variable is not defined. " +
+                    "Can't build against JDK 8 runtime and run JDK 8 compatibility tests. " +
+                    "Please ensure JDK 8 is installed and that JDK_18 points to it.")
+        }
+    }
+}
+
+tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile) {
+    kotlinOptions.jdkHome = System.env.JDK_18
+    // only fail when actually trying to compile, not during project setup phase
+    dependsOn(checkJdk8)
+}
+
+task jdk8Test(type: Test, dependsOn: [compileTestKotlin, checkJdk8]) {
+    classpath = files { test.classpath }
+    testClassesDirs = files { test.testClassesDirs }
+    executable = "$System.env.JDK_18/bin/java"
+}
+
+// Run these tests only during nightly stress test
+jdk8Test.onlyIf { project.properties['stressTest'] != null }
+build.dependsOn jdk8Test
