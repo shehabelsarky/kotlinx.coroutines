@@ -56,6 +56,8 @@ internal object DebugProbesImpl {
             .name(cl.name)
             .make()
             .load(cl.classLoader, ClassReloadingStrategy.fromInstalledAgent())
+
+        BlockHoundIntegration.install()
     }
 
     @Synchronized
@@ -73,6 +75,8 @@ internal object DebugProbesImpl {
             .name(cl.name)
             .make()
             .load(cl.classLoader, ClassReloadingStrategy.fromInstalledAgent())
+
+        BlockHoundIntegration.uninstall()
     }
 
     @Synchronized
