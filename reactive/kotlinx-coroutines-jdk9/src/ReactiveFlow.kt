@@ -29,5 +29,5 @@ public fun <T : Any> Flow<T>.asPublisher(): Publisher<T> {
 /**
  * A thin wrapper around [kotlinx.coroutines.reactive.collect] for JDK 9 Flow [Publisher].
  */
-public suspend fun <T> Publisher<T>.collect(action: (T) -> Unit) =
+public suspend inline fun <T> Publisher<T>.collect(action: (T) -> Unit) =
     FlowAdapters.toPublisher(this).collect(action)
