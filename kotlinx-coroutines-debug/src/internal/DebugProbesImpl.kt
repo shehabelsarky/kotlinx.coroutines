@@ -47,7 +47,7 @@ internal object DebugProbesImpl {
     public fun install() {
         if (++installations > 1) return
 
-        ByteBuddyAgent.install()
+        ByteBuddyAgent.install(ByteBuddyAgent.AttachmentProvider.ForEmulatedAttachment.INSTANCE)
         val cl = Class.forName("kotlin.coroutines.jvm.internal.DebugProbesKt")
         val cl2 = Class.forName("kotlinx.coroutines.debug.DebugProbesKt")
 
